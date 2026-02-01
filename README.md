@@ -31,27 +31,4 @@
 
 ---
 
-## 发布流程（维护者：打 tag 即自动构建并上传 Releases）
-
-把源码推送到 GitHub 后，按下面做即可让用户**直接下载使用**，无需在本地 Xcode 运行：
-
-1. 在仓库里打一个 **tag**（例如 `v1.0.0`）并推送：
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-2. **GitHub Actions** 会自动构建 macOS 应用，并上传 **Do-it-Release.zip** 到该 tag 对应的 **Release**  
-3. 在 **Releases** 页面编辑该 Release，补充说明（可选）后发布  
-4. 用户从 Releases 下载 zip 即可使用，和别的 macOS 插件一样  
-
-这样：**用户可 fork 开发，也可直接下载使用，不需要在 Xcode 上运行。**
-
----
-
-## 技术栈
-
-- SwiftUI，macOS 15.7+
-- 菜单栏：`MenuBarExtra`（仅菜单栏、不占 Dock）
-- 数据：UserDefaults 持久化
-
 详见 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)、[DISTRIBUTION.md](DISTRIBUTION.md)。
