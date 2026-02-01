@@ -7,12 +7,54 @@
 
 import SwiftUI
 
+/// 主界面读取的设置 key（与 SettingsView 一致）
+private let appearanceKey = "menudo_appearance"
+private let fontSizeKey = "menudo_fontSize"
+
+/// 设置中的内容字体：小→body，中→title3，大→title2（用于正文、图标、标题，随主题颜色）
+private struct ContentFontKey: EnvironmentKey {
+    static let defaultValue: Font = .body
+}
+extension EnvironmentValues {
+    var contentFont: Font {
+        get { self[ContentFontKey.self] }
+        set { self[ContentFontKey.self] = newValue }
+    }
+}
+
 struct ContentView: View {
     @State private var store = TodoStore()
     @FocusState private var focusedQuadrant: QuadrantType?
     @FocusState private var focusResignSink: Bool  // 点击其他区域时聚焦此处，使输入框/编辑框失焦并触发保存
     @State private var draftText: [QuadrantType: String] = [:]
     @State private var editingItemId: UUID?
+
+    @AppStorage(appearanceKey) private var appearanceRaw: String = "dark"
+    @AppStorage(fontSizeKey) private var fontSizeRaw: String = "medium"
+
+    /// 应用的主题：浅色或深色
+    private var preferredColorScheme: ColorScheme? {
+        appearanceRaw == "light" ? .light : .dark
+    }
+
+    /// 设置中的内容字体：小→body，中→title3，大→title2
+    private var effectiveContentFont: Font {
+        switch fontSizeRaw {
+        case "small": return .body
+        case "large": return .title2
+        default: return .title3
+        }
+    }
+
+    /// 实际使用的主题（用于背景等颜色）
+    private var effectiveColorScheme: ColorScheme {
+        appearanceRaw == "light" ? .light : .dark
+    }
+
+    /// 随主题变化的背景色
+    private func adaptiveBackground(light: Double, dark: Double) -> Color {
+        Color(white: effectiveColorScheme == .dark ? dark : light)
+    }
 
     /// 每个象限为固定正方形，尺寸对应 macOS 桌面插件最大尺寸（systemLarge 约 329×345 pt，取 345 pt 作为正方形边长）
     private static let quadrantSize: CGFloat = 345
@@ -48,8 +90,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // 背景：浅灰色
-            Color(white: 0.1)
+            // 背景：随主题变化（深色 0.1 / 浅色 0.95）
+            adaptiveBackground(light: 0.95, dark: 0.1)
                 .ignoresSafeArea()
 
             // 不可见的焦点承接视图：点击其他区域时聚焦此处，让输入框/编辑框失焦
@@ -64,14 +106,18 @@ struct ContentView: View {
                 // 顶部栏
                 HStack {
                     Text("MenuDo")
-                        .font(.title.bold())
+                        .font(effectiveContentFont.bold())
+                        .foregroundStyle(.primary)
                     Spacer()
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.title3)
+                        .font(effectiveContentFont)
                         .foregroundStyle(.secondary)
-                    Image(systemName: "gearshape")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                    SettingsLink {
+                        Image(systemName: "gearshape")
+                            .font(effectiveContentFont)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -94,13 +140,14 @@ struct ContentView: View {
                         ) {
                             TextField("添加任务…", text: binding(for: quadrant), axis: .vertical)
                                 .textFieldStyle(.plain)
+                                .font(effectiveContentFont)
                                 .lineLimit(2...8)
                                 .focused($focusedQuadrant, equals: Optional(quadrant))
                                 .onSubmit { saveDraftAndResignFocus(quadrant: quadrant) }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
-                                .background(Color(white: 0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .background(adaptiveBackground(light: 0.92, dark: 0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
                     }
                 }
@@ -126,11 +173,14 @@ struct ContentView: View {
                 draftText = copy
             }
         }
+        .preferredColorScheme(preferredColorScheme)
+        .environment(\.contentFont, effectiveContentFont)
     }
 }
 
 // MARK: - 单象限卡片（固定正方形）
 private struct QuadrantCard<AddField: View>: View {
+    @Environment(\.contentFont) private var contentFont
     let size: CGFloat
     let quadrant: QuadrantType
     let tasks: [TodoItem]
@@ -148,7 +198,7 @@ private struct QuadrantCard<AddField: View>: View {
                     .fill(quadrant.color)
                     .frame(width: 8, height: 8)
                 Text(quadrant.title)
-                    .font(.subheadline.bold())
+                    .font(contentFont.bold())
                     .foregroundStyle(.primary)
                     .lineLimit(1)
             }
@@ -180,6 +230,8 @@ private struct QuadrantCard<AddField: View>: View {
 
 // MARK: - 单条任务行
 private struct TaskRowView: View {
+    @Environment(\.contentFont) private var contentFont
+    @Environment(\.colorScheme) private var colorScheme
     let item: TodoItem
     let isEditing: Bool
     let onToggle: () -> Void
@@ -190,11 +242,15 @@ private struct TaskRowView: View {
     @State private var editText: String = ""
     @FocusState private var isEditFocused: Bool
 
+    private var rowBackground: Color {
+        colorScheme == .dark ? Color(white: 0.1) : Color(white: 0.92)
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             Button(action: onToggle) {
                 Image(systemName: item.isCompleted ? "checkmark.square.fill" : "square")
-                    .font(.body)
+                    .font(contentFont)
                     .foregroundStyle(item.isCompleted ? .secondary : .primary)
             }
             .buttonStyle(.plain)
@@ -203,14 +259,14 @@ private struct TaskRowView: View {
             if isEditing {
                 TextField("任务内容", text: $editText, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(.subheadline)
+                    .font(contentFont)
                     .lineLimit(2...8)
                     .focused($isEditFocused)
                     .onSubmit { onCommitEdit(editText) }
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text(item.title)
-                    .font(.subheadline)
+                    .font(contentFont)
                     .strikethrough(item.isCompleted, color: .secondary)
                     .foregroundStyle(item.isCompleted ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -221,7 +277,7 @@ private struct TaskRowView: View {
 
             Button(action: onDelete) {
                 Image(systemName: "xmark")
-                    .font(.caption.bold())
+                    .font(contentFont.bold())
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -229,7 +285,7 @@ private struct TaskRowView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(Color(white: 0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(rowBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onChange(of: isEditing) { _, newValue in
             if newValue {
                 editText = item.title
