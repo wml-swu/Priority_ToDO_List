@@ -30,5 +30,3 @@
 修改后可以提 PR 回上游，或在你自己的 fork 里打 tag 触发自动构建（见下方「发布流程」）。
 
 ---
-
-详见 [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)、[DISTRIBUTION.md](DISTRIBUTION.md)。
