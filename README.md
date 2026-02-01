@@ -6,7 +6,7 @@
 
 ## 直接下载使用（无需 Xcode，和其他 macOS 插件一样）
 
-1. 打开本仓库的 **[Releases](https://github.com/你的用户名/priority_list/releases)** 页面  
+1. 打开本仓库的 **[Releases](https://github.com/wml-swu/Priority_ToDO_List/releases/tag/v1.0.0)** 页面  
 2. 下载最新版本的 **Do-it-Release.zip**  
 3. 解压得到 `priority_list.app`，拖到 **「应用程序」** 文件夹  
 4. 从 **菜单栏右侧** 点击 Do it! 图标即可使用  
